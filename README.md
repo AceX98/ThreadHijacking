@@ -33,6 +33,8 @@ AceX98 · Air University ·
 
 ⚠️ *Built in an isolated lab VM for educational and research purposes only.*
 
+> Code is being written module by module. README documents the full design upfront.
+
 </div>
 
 ---
