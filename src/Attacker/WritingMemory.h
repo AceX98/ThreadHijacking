@@ -113,6 +113,18 @@ class Shellcodeinjector
                   }
                   return remoteMem;
             }
+
+            static bool Ismemoryexecutable(HANDLE hProcess,LPVIOD addr)
+            {
+               MEMORY_BASIC_INFORMATION mbi;
+               SIZE_T result=VirtualQueryEx(hProcess , addr, &mbr,sizeof(mbi));
+
+               if(result==0)
+               {
+                return false;
+               }
+               return (mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ |  PAGE_EXECUTE_WRITE | PAGE_EXECUTE_READWRITE)) != 0
+            }
          }
 
 }
